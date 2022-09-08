@@ -84,6 +84,9 @@ mp1_rtc_tasklet:
 
 .globl mp1_ioctl
 mp1_ioctl:
+	pushl %ebp;
+	movl  %esp,%ebp;
+	pushl %ebx;
 		ret
 
 
