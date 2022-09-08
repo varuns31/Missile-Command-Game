@@ -84,11 +84,31 @@ mp1_rtc_tasklet:
 
 .globl mp1_ioctl
 mp1_ioctl:
-	pushl %ebp;
-	movl  %esp,%ebp;
-	pushl %ebx;
+	pushl %ebp
+	movl  %esp,%ebp
+	pushl %ebx
+	pushl %esi
+	pushl %edi
+	movl 8(%ebp),%ebx
+	cmpl $0,%ebx
+	jl RET_INVALID
+	cmpl $4,%ebx
+	ja RET_INVALID
+	jmp *jmptable(,%ebx,4)
+RETURN_NOW:
+		popl %edi
+		popl %esi
+		popl %ebx
+		leave 	
 		ret
 
+RET_INVALID:
+	movl $-1,%eax
+	jmp RETURN_NOW
+
+RET_ZERO:
+	movl $0,%eax
+	jmp RETURN_NOW
 
 # ----------------- Functions private to this file -------------------
 
@@ -96,16 +116,43 @@ update_missiles:
 		ret
 
 mp1_ioctl_startgame:
-		ret
+	movl $40,crosshairs_x
+	movl $12,crosshairs_y
+	jmp RETURN_NOW
 
 mp1_ioctl_addmissile:
+	
 		ret
 
 mp1_ioctl_movexhairs:
-		ret
+	movw 4(%ebp),%bx
+	movw 6(%ebp),%si
+	movl crosshairs_x,%edi
+	addw %bx,%di
+	cmpl $79,%edi
+	ja VALID_X
+	subw %bx,%di
+VALID_X: 
+	movl %edi,crosshairs_x
+	movl crosshairs_y,%edi
+	addw %si,%di
+	cmpl $24,%edi
+	ja VALID_Y
+	subw %si,%di
+VALID_Y:
+	movl %edi,crosshairs_y
+	jmp RET_ZERO
 
 mp1_ioctl_getstatus:
-		ret
+	movl 4(%ebp),%ebx
+	andl $0,%esi
+	movw mp1_score,%si
+	movw %si,(%ebx)
+	jmp RET_ZERO
 
 mp1_ioctl_endgame:
 		ret
+
+jmptable:
+	.long mp1_ioctl_startgame,mp1_ioctl_addmissile,mp1_ioctl_movexhairs,mp1_ioctl_getstatus,mp1_ioctl_endgame
+	
