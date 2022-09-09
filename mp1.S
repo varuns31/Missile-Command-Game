@@ -127,7 +127,7 @@ NEXT_MISSLE:
 
 
 
-mp1_missile_remove:
+mp1_missile_remove: # void* remove(void* ptr) returns pointer to next of deleted pointer
 	pushl %ebp
 	movl  %esp,%ebp
 	pushl %ebx
