@@ -71,7 +71,79 @@ mp1_poke:
 
 .globl mp1_rtc_tasklet
 mp1_rtc_tasklet:
+	pushl %ebp
+	movl  %esp,%ebp
+	pushl %ebx
+	pushl %esi
+	pushl %edi
+	jmp check_exploding
+DONE:
+	#call missile_explode
+
 		ret
+
+check_exploding:
+	movl mp1_missile_list,%esi #head of linked list
+	cmpl $0,%esi #head is 0
+	je DONE
+	movl 28(%esi),%ebx
+	cmpl $0,%ebx #exploded=0
+	je NEXT_MISSLE
+	movl 4(%esi),%ebx # x=x+VX
+	movl 12(%esi),%edi
+	addl %edi,%ebx
+	movl %ebx,4(%esi)
+	movl 8(%esi),%ebx # y=y+vy
+	movl 16(%esi),%edi
+	addl %edi,%ebx
+	movl %ebx,8(%esi)
+NEXT_MISSLE:
+	movl (%esi),%esi
+	jmp check_exploding
+
+
+
+mp1_missile_remove:
+	pushl %ebp
+	movl  %esp,%ebp
+	pushl %ebx
+	pushl %esi
+	pushl %edi
+	movl 4(%ebp),%ebx # ebx= pointer of missile to remove
+	movl mp1_missile_list,%esi # esi=head of linked list
+	cmpl %esi,%ebx # head needs to be removed
+	je change_head
+LOOP:
+	cmpl (%esi),%ebx #finding prev of pointer to be removed
+	je remove_missile
+	movl (%esi),%esi
+	jmp LOOP
+
+remove_missile:
+	movl (%ebx),%edi # edi = ebx->next
+	movl %edi,(%esi) # prev->next=temp->next
+	pushl %ebx
+	call mp1_free
+	popl %ebx
+	jmp return_missile_remove
+
+return_missile_remove:
+	popl %edi
+	popl %esi
+	popl %ebx
+	leave 
+	ret
+
+change_head:
+	movl (%esi),%edi
+	movl %edi,mp1_missile_list
+	pushl %esi
+	call mp1_free
+	popl %esi
+	jmp return_missile_remove
+
+
+
 
 # int mp1_ioctl(unsigned long arg, unsigned int cmd)
 # The dispatch function for the MP1 ioctls - should use the cmd argument
