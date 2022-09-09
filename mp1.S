@@ -30,6 +30,7 @@
 mp1_missile_list:	.long 0x0	# Head of list pointer
 base_alive:		.long 0x0	# Array of 3 bytes, plus a padding byte
 mp1_score:		.long 0x0	# Player's current score
+eax_save: .long 0x0
 
 
 # Data private to this  file
@@ -78,9 +79,32 @@ mp1_rtc_tasklet:
 	pushl %edi
 	jmp check_exploding
 DONE:
+	movl mp1_missile_list,%ebx
+	jmp moved_off_screen
+Back_from_jump:
+
 	#call missile_explode
 
 		ret
+
+moved_off_screen:
+	cmpl $0,%ebx
+	je Back_from_jump
+	cmpl $79,4(%ebx)
+	ja remove_missile_moved_off_screen
+	cmpl $24,8(%ebx)
+	ja remove_missile_moved_off_screen
+	movl (%ebx),%ebx
+	jmp moved_off_screen
+
+remove_missile_moved_off_screen:
+	movl %eax,eax_save
+	pushl %ebx
+	call mp1_missile_remove
+	popl %ebx
+	movl %eax,%ebx
+	movl eax_save,%eax
+	jmp moved_off_screen
 
 check_exploding:
 	movl mp1_missile_list,%esi #head of linked list
@@ -131,6 +155,7 @@ return_missile_remove:
 	popl %edi
 	popl %esi
 	popl %ebx
+	movl %edi,%eax
 	leave 
 	ret
 
@@ -202,14 +227,14 @@ mp1_ioctl_movexhairs:
 	movl crosshairs_x,%edi
 	addw %bx,%di
 	cmpl $79,%edi
-	ja VALID_X
+	jb VALID_X
 	subw %bx,%di
 VALID_X: 
 	movl %edi,crosshairs_x
 	movl crosshairs_y,%edi
 	addw %si,%di
 	cmpl $24,%edi
-	ja VALID_Y
+	jb VALID_Y
 	subw %si,%di
 VALID_Y:
 	movl %edi,crosshairs_y
