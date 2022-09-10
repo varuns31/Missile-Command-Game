@@ -114,8 +114,14 @@ exploded_missile:
 	subl $1,28(%ebx)
 	cmpl $0,28(%ebx)
 	je exploded_missile_remove
-	movl (%ebx),%ebx	
-	jmp explosion_now # Exploding missile to be drawn later
+	jne draw_exploded_missile
+	#movl (%ebx),%ebx	
+	#jmp explosion_now # Exploding missile to be drawn later
+
+draw_exploded_missile:
+	
+	movl (%ebx),%ebx
+	jmp explosion_now
 
 exploded_missile_remove:
 	movl %eax,eax_save
