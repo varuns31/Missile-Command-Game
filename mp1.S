@@ -146,6 +146,8 @@ update_missiles:
 		jmp RETURN_NOW
 
 mp1_ioctl_startgame:
+    movl $12,crosshairs_x
+	movl $40,crosshairs_y
 		jmp RETURN_NOW
 
 mp1_ioctl_addmissile:
@@ -156,16 +158,16 @@ mp1_ioctl_movexhairs:
 update_cross_hair:
 	movw 10(%ebp),%bx #lower 16 bits of argument
 	movw 8(%ebp),%si #upper 16 bits of argument
-	movl crosshairs_y,%edi # current crosshairs_x
+	movl crosshairs_x,%edi # current crosshairs_x
 	addw %bx,%di #add lower 16 bits to crosshairs_x
-	cmpw $79,%di #compare to 79
+	cmpl $25,%edi #compare to 79
 	jb VALID_X #move ahead if valid
 	subw %bx,%di #subtract again if invalid
 VALID_X: 
-	movl %edi,crosshairs_y #update crosshairs_x
-	movl crosshairs_x,%edi 
-	addw %si,%di #update crosshairs_x
-	cmpw $24,%di
+	movl %edi,crosshairs_x #update crosshairs_x
+	movl crosshairs_y,%edi 
+	addw %si,%di #update crosshairs_y
+	cmpl $80,%edi
 	jb VALID_Y
 	subw %si,%di #subtract again if invalid
 VALID_Y:
