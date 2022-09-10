@@ -75,8 +75,40 @@ mp1_rtc_tasklet:
 	pushl %ebx
 	pushl %esi
 	pushl %edi
+	movl mp1_missile_list,%ebx
+	jmp check_exploding
+DONE:
 	jmp redraw_crosshairs
 	
+check_exploding:
+	cmpl $0,%ebx #head is 0
+	je DONE
+	movl EXPLODED(%ebx),%esi
+	cmpl $0,%esi #exploded!=0 means missile is exploding
+	jne NEXT_MISSLE
+	je del_missile_from_screen
+
+NEXT_MISSLE:
+	movl (%esi),%esi
+	jmp check_exploding
+
+del_missile_from_screen:
+	jmp update_position
+
+update_position:
+	movl X(%ebx),%esi 
+	movl DEST_X(%ebx),%edi
+	addl %edi,%esi
+	movl %esi,X(%ebx) # x=x+VX
+	movl Y(%ebx),%esi 
+	movl DEST_Y(%ebx),%edi
+	addl %edi,%esi
+	movl %esi,Y(%ebx) # y=y+vy
+	jmp redraw_missile
+
+redraw_missile:
+	jmp NEXT_MISSLE
+
 leave_tasklet:
 		popl %edi
 		popl %esi
@@ -163,15 +195,14 @@ update_cross_hair:
 	movw 8(%ebp),%si #upper 16 bits of argument
 	movl crosshairs_y,%edi # current crosshairs_y
 	addw %bx,%di #add lower 16 bits to crosshairs_y
-	cmpl $25,%edi #compare to 79
+	cmpl $25,%edi #compare to 25
 	jb VALID_X #move ahead if valid
 	subw %bx,%di #subtract again if invalid
 VALID_X: 
 	movl %edi,crosshairs_y #update crosshairs_y
 	movl crosshairs_x,%edi 
 	addw %si,%di #update crosshairs_x
-
-	cmpl $80,%edi
+	cmpl $80,%edi #compare to 80
 	jb VALID_Y
 	subw %si,%di #subtract again if invalid
 VALID_Y:
