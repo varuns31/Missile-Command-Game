@@ -82,93 +82,64 @@ DONE:
 Back_from_jump:
     jmp explosion_now
 Back_from_explosions:
-	movl $0,%esi
+	movl $0,%ecx
+	movl $3844,%esi
 	jmp redraw_bases
 Back_from_redraw_bases:
 	jmp redraw_crosshairs
 
 redraw_bases:
-	jmp draw_base_1
-base_1_drawn:
-	jmp draw_base_2
-base_2_drawn:
-	jmp draw_base_3
-base_3_drawn:
-	jmp Back_from_redraw_bases
-
-draw_base_1:
-	pushl %ecx
-	pushl %eax
-	pushl %edi
+	cmpl $3,%ecx
+	je Back_from_redraw_bases
+	addl $32,%esi #2*16 is the next location for base
+	movl $base_alive,%ebx
+	addl %ecx,%ebx
+	cmpl $0,(%ebx)
+	je dead_base
 	movl $base_pic,%edi
-	movb (%edi),%cl
-	movl $3876,%eax
-	call mp1_poke
-	movb 1(%edi),%cl
-	movl $3878,%eax
-	call mp1_poke
-	movb  2(%edi),%cl
-	movl $3880,%eax
-	call mp1_poke
-	movb  3(%edi),%cl
-	movl $3882,%eax
-	call mp1_poke
-	movb  4(%edi),%cl
-	movl $3884,%eax
-	call mp1_poke
-	popl %edi
-	popl %eax
-	popl %ecx
-	jmp base_1_drawn
-draw_base_2:
-	pushl %ecx
-	pushl %eax
-	pushl %edi
-	movl $base_pic,%edi
-	movb  (%edi),%cl
-	movl $3912,%eax
-	call mp1_poke
-	movb  1(%edi),%cl
-	movl $3914,%eax
-	call mp1_poke
-	movb  2(%edi),%cl
-	movl $3916,%eax
-	call mp1_poke
-	movb  3(%edi),%cl
-	movl $3918,%eax
-	call mp1_poke
-	movb  4(%edi),%cl
-	movl $3920,%eax
-	call mp1_poke
-	popl %edi
-	popl %eax
-	popl %ecx
-	jmp base_2_drawn
-draw_base_3:
-	pushl %ecx
-	pushl %eax
-	pushl %edi
+	jmp draw_base
+dead_base:
 	movl $dead_base_pic,%edi
+	jmp draw_base
+
+draw_base:
+	pushl %ecx
+	pushl %eax
+	pushl %edi
 	movb (%edi),%cl
-	movl $3948,%eax
+	movl %esi,%eax
+	pushl %eax
 	call mp1_poke
+	popl %eax
+	addl $2,%esi
+	movl %esi,%eax
 	movb  1(%edi),%cl
-	movl $3950,%eax
+    pushl %eax
 	call mp1_poke
+	popl %eax
+	addl $2,%esi
+	movl %esi,%eax
 	movb  2(%edi),%cl
-	movl $3952,%eax
+	pushl %eax
 	call mp1_poke
+	popl %eax
+	addl $2,%esi
+	movl %esi,%eax
 	movb  3(%edi),%cl
-	movl $3954,%eax
+	pushl %eax
 	call mp1_poke
+	popl %eax
+	addl $2,%esi
+	movl %esi,%eax
 	movb  4(%edi),%cl
-	movl $3956,%eax
+	pushl %eax
 	call mp1_poke
+	popl %eax
 	popl %edi
 	popl %eax
 	popl %ecx
-	jmp base_3_drawn
-
+	incl %ecx
+	jmp redraw_bases
 
 explosion_now:
 	cmpl $0,%ebx #head==NULL
@@ -422,6 +393,10 @@ update_missiles:
 mp1_ioctl_startgame:
     movl $12,crosshairs_y
 	movl $40,crosshairs_x
+	movl $base_alive,%ebx
+	movl $1,1(%ebx) # first base is alive
+	movl $1,2(%ebx) # second base is alive
+	movl $1,3(%ebx) # third base is alive
 		jmp RETURN_NOW
 
 mp1_ioctl_addmissile:
