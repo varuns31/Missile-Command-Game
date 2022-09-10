@@ -78,8 +78,69 @@ mp1_rtc_tasklet:
 	movl mp1_missile_list,%ebx
 	jmp check_exploding
 DONE:
+	jmp moved_off_screen
+Back_from_jump:
 	jmp redraw_crosshairs
 	
+moved_off_screen:
+	cmpl $0,%ebx #head=NULL
+	je Back_from_jump
+	cmpl $79,4(%ebx) #head->x > 79
+	ja remove_missile_moved_off_screen
+	cmpl $24,8(%ebx) # head->y > 24
+	ja remove_missile_moved_off_screen
+	movl (%ebx),%ebx
+	jmp moved_off_screen
+
+remove_missile_moved_off_screen:
+	pushl %eax #caller save eax
+	pushl %ebx
+	call mp1_missile_remove
+	popl %ebx
+	movl %eax,%ebx #ebx gets next of deleted pointer
+	popl %eax
+	jmp moved_off_screen
+
+mp1_missile_remove: # void* remove(void* ptr) returns pointer to next of deleted pointer
+	pushl %ebp
+	movl  %esp,%ebp
+	pushl %ebx
+	pushl %esi
+	pushl %edi
+	movl 8(%ebp),%ebx # ebx= pointer of missile to remove
+	movl mp1_missile_list,%esi # esi=head of linked list
+	cmpl %esi,%ebx # head needs to be removed
+	je change_head
+LOOP:
+	cmpl (%esi),%ebx #finding prev of pointer to be removed
+	je remove_missile
+	movl (%esi),%esi
+	jmp LOOP
+
+remove_missile:
+	movl (%ebx),%edi # edi = ebx->next
+	movl %edi,(%esi) # prev->next=temp->next
+	pushl %ebx
+	call mp1_free
+	popl %ebx
+	jmp return_missile_remove
+
+return_missile_remove:
+	movl %edi,%eax #return value is next of deleted pointer
+	popl %edi
+	popl %esi
+	popl %ebx
+	leave 
+	ret
+change_head:
+	movl (%esi),%edi #head->next=edi
+	movl %edi,mp1_missile_list #new head of linked list
+	pushl %esi
+	call mp1_free
+	popl %esi
+	jmp return_missile_remove
+
+
 check_exploding:
 	cmpl $0,%ebx #head is 0
 	je DONE
