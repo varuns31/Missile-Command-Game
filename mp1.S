@@ -80,8 +80,68 @@ mp1_rtc_tasklet:
 DONE:
 	jmp moved_off_screen
 Back_from_jump:
+    jmp explosion_now
+Back_from_explosions:
 	jmp redraw_crosshairs
 	
+explosion_now:
+	cmpl $0,%ebx #head==NULL
+	je Back_from_explosions
+	movl X(%ebx),%esi
+	movl DEST_X(%ebx),%edi
+	cmpl %esi,%edi # x==DEST_X
+	je cont_explosion
+	movl EXPLODED(%ebx),%esi #exploded is not equal to 0
+	cmpl $0,%esi
+	ja exploded_missile
+	movl (%ebx),%ebx
+	jmp explosion_now #check next missile
+
+cont_explosion:
+	movl Y(%ebx),%esi
+	movl DEST_Y(%ebx),%edi
+	je exploded_missile #y==DEST_Y
+	movl EXPLODED(%ebx),%esi #exploded is not equal to 0
+	cmpl $0,%esi
+	ja exploded_missile
+	movl (%ebx),%ebx	
+	jmp explosion_now #check next missile
+
+exploded_missile:
+	pushl %ebx
+	call missile_explode
+	popl %ebx
+	subl $1,28(%ebx) #exploded--
+	cmpl $0,28(%ebx) #explosion ended if the value becomes 0
+	je exploded_missile_remove
+	jne draw_exploded_missile
+
+draw_exploded_missile:
+	pushl %ecx #caller save ecx
+	pushl %esi #caller save esi
+	pushl %eax #caller save eax
+	movb EXPLOSION(%ebx),%cl
+	movl X(%ebx),%eax
+	imull $160,%eax,%eax #80 characters per row * 2 bytes per character * x
+	movl Y(%ebx),%esi #esi=y
+	imull $2,%esi,%esi #2 bytes per character * x
+	addl %esi,%eax
+	call mp1_poke #print exploding missile
+	popl %eax
+	popl %esi
+	popl %ecx
+	movl (%ebx),%ebx
+	jmp explosion_now #check next missile
+
+exploded_missile_remove:
+	pushl %eax # caller save eax
+	pushl %ebx
+	call mp1_missile_remove
+	popl %ebx
+	movl %eax,%ebx #ebx=next of deleted pointer
+	popl %eax
+	jmp explosion_now 
+
 moved_off_screen:
 	cmpl $0,%ebx #head=NULL
 	je Back_from_jump
