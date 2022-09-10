@@ -82,72 +82,90 @@ DONE:
 	movl mp1_missile_list,%ebx
 	jmp moved_off_screen
 Back_from_jump:
+	movl mp1_missile_list,%ebx
 	jmp explosion_now
+	jmp redraw_crosshairs
 Back_from_explosions:
-
+		popl %edi
+		popl %esi
+		popl %ebx
+		leave 
 		ret
 
 explosion_now:
-	movl mp1_missile_list,%ebx
-	cmpl $0,%ebx
+	cmpl $0,%ebx #head==NULL
 	je Back_from_explosions
 	movl 4(%ebx),%esi
 	movl 20(%ebx),%edi
-	cmpl %esi,%edi
+	cmpl %esi,%edi # x==DEST_X
 	je cont_explosion
+	movl 28(%ebx),%esi #exploded is not equal to 0
+	cmpl $0,%esi
+	ja exploded_missile
 	movl (%ebx),%ebx
+	jmp explosion_now #check next missile
 
 cont_explosion:
 	movl 8(%ebx),%esi
 	movl 24(%ebx),%edi
-	je exploded_missile
-	movl 28(%ebx),%esi
+	je exploded_missile #y==DEST_Y
+	movl 28(%ebx),%esi #exploded is not equal to 0
 	cmpl $0,%esi
 	ja exploded_missile
 	movl (%ebx),%ebx	
-	jmp explosion_now
+	jmp explosion_now #check next missile
 
 exploded_missile:
 	pushl %ebx
 	call missile_explode
 	popl %ebx
-	subl $1,28(%ebx)
-	cmpl $0,28(%ebx)
+	subl $1,28(%ebx) #exploded--
+	cmpl $0,28(%ebx) #explosion ended if the value becomes 0
 	je exploded_missile_remove
 	jne draw_exploded_missile
-	#movl (%ebx),%ebx	
-	#jmp explosion_now # Exploding missile to be drawn later
 
 draw_exploded_missile:
-	
+	pushl %ecx #caller save ecx
+	pushl %esi #caller save esi
+	pushl %eax #caller save eax
+	movb 64(%ebx),%cl
+	movl 4(%ebx),%eax
+	imull $160,%eax,%eax #80 characters per row * 2 bytes per character * x
+	movl 8(%ebx),%esi #esi=y
+	imull $2,%esi,%esi #2 bytes per character * x
+	addl %esi,%eax
+	call mp1_poke #print exploding missile
+	popl %eax
+	popl %esi
+	popl %ecx
 	movl (%ebx),%ebx
-	jmp explosion_now
+	jmp explosion_now #check next missile
 
 exploded_missile_remove:
-	movl %eax,eax_save
+	movl %eax,eax_save # caller save eax
 	pushl %ebx
 	call mp1_missile_remove
 	popl %ebx
-	movl %eax,%ebx
+	movl %eax,%ebx #ebx=next of deleted pointer
 	movl eax_save,%eax
 	jmp explosion_now 
 
 moved_off_screen:
-	cmpl $0,%ebx
+	cmpl $0,%ebx #head=NULL
 	je Back_from_jump
-	cmpl $79,4(%ebx)
+	cmpl $79,4(%ebx) #head->x > 79
 	ja remove_missile_moved_off_screen
-	cmpl $24,8(%ebx)
+	cmpl $24,8(%ebx) # head->y > 24
 	ja remove_missile_moved_off_screen
 	movl (%ebx),%ebx
 	jmp moved_off_screen
 
 remove_missile_moved_off_screen:
-	movl %eax,eax_save
+	movl %eax,eax_save #caller save eax
 	pushl %ebx
 	call mp1_missile_remove
 	popl %ebx
-	movl %eax,%ebx
+	movl %eax,%ebx #ebx gets next of deleted pointer
 	movl eax_save,%eax
 	jmp moved_off_screen
 
@@ -156,21 +174,30 @@ check_exploding:
 	cmpl $0,%esi #head is 0
 	je DONE
 	movl 28(%esi),%ebx
-	cmpl $0,%ebx #exploded=0
-	je NEXT_MISSLE
-	movl 4(%esi),%ebx # x=x+VX
+	cmpl $0,%ebx #exploded!=0 means missile is exploding
+	jne NEXT_MISSLE
+	je del_missile_from_screen
+update_position:
+	movl 4(%esi),%ebx 
 	movl 12(%esi),%edi
 	addl %edi,%ebx
-	movl %ebx,4(%esi)
-	movl 8(%esi),%ebx # y=y+vy
+	movl %ebx,4(%esi) # x=x+VX
+	movl 8(%esi),%ebx 
 	movl 16(%esi),%edi
 	addl %edi,%ebx
-	movl %ebx,8(%esi)
+	movl %ebx,8(%esi) # y=y+vy
+	jmp redraw_missile
 NEXT_MISSLE:
 	movl (%esi),%esi
 	jmp check_exploding
 
 
+del_missile_from_screen:
+	jmp update_position
+
+
+redraw_missile:
+	jmp NEXT_MISSLE
 
 mp1_missile_remove: # void* remove(void* ptr) returns pointer to next of deleted pointer
 	pushl %ebp
@@ -197,23 +224,36 @@ remove_missile:
 	jmp return_missile_remove
 
 return_missile_remove:
+	movl %edi,%eax #return value is next of deleted pointer
 	popl %edi
 	popl %esi
 	popl %ebx
-	movl %edi,%eax
 	leave 
 	ret
 
 change_head:
-	movl (%esi),%edi
-	movl %edi,mp1_missile_list
+	movl (%esi),%edi #head->next=edi
+	movl %edi,mp1_missile_list #new head of linked list
 	pushl %esi
 	call mp1_free
 	popl %esi
 	jmp return_missile_remove
 
-
-
+redraw_crosshairs:
+	pushl %eax
+	pushl %esi
+	pushl %ecx
+	movl crosshairs_x,%esi
+	imull $160,%esi,%eax
+	movl crosshairs_y,%esi
+	imull $2,%esi
+	addl %esi,%eax
+	movb $35,%cl #print hash for crosshairs
+	call mp1_poke
+	popl %ecx
+	popl %esi
+	popl %eax
+	jmp Back_from_explosions
 
 # int mp1_ioctl(unsigned long arg, unsigned int cmd)
 # The dispatch function for the MP1 ioctls - should use the cmd argument
@@ -267,6 +307,8 @@ mp1_ioctl_addmissile:
 		ret
 
 mp1_ioctl_movexhairs:
+	jmp remove_crosshairs
+update_cross_hair:
 	movw 4(%ebp),%bx
 	movw 6(%ebp),%si
 	movl crosshairs_x,%edi
@@ -298,3 +340,18 @@ mp1_ioctl_endgame:
 jmptable:
 	.long mp1_ioctl_startgame,mp1_ioctl_addmissile,mp1_ioctl_movexhairs,mp1_ioctl_getstatus,mp1_ioctl_endgame
 	
+remove_crosshairs:
+	pushl %eax
+	pushl %esi
+	pushl %ecx
+	movl crosshairs_x,%esi
+	imull $160,%esi,%eax
+	movl crosshairs_y,%esi
+	imull $2,%esi
+	addl %esi,%eax
+	movb $32,%cl
+	call mp1_poke #print " " for original crosshairs
+	popl %ecx
+	popl %esi
+	popl %eax
+	jmp update_cross_hair
