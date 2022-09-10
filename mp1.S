@@ -82,10 +82,49 @@ DONE:
 	movl mp1_missile_list,%ebx
 	jmp moved_off_screen
 Back_from_jump:
-
-	#call missile_explode
+	jmp explosion_now
+Back_from_explosions:
 
 		ret
+
+explosion_now:
+	movl mp1_missile_list,%ebx
+	cmpl $0,%ebx
+	je Back_from_explosions
+	movl 4(%ebx),%esi
+	movl 20(%ebx),%edi
+	cmpl %esi,%edi
+	je cont_explosion
+	movl (%ebx),%ebx
+
+cont_explosion:
+	movl 8(%ebx),%esi
+	movl 24(%ebx),%edi
+	je exploded_missile
+	movl 28(%ebx),%esi
+	cmpl $0,%esi
+	ja exploded_missile
+	movl (%ebx),%ebx	
+	jmp explosion_now
+
+exploded_missile:
+	pushl %ebx
+	call missile_explode
+	popl %ebx
+	subl $1,28(%ebx)
+	cmpl $0,28(%ebx)
+	je exploded_missile_remove
+	movl (%ebx),%ebx	
+	jmp explosion_now # Exploding missile to be drawn later
+
+exploded_missile_remove:
+	movl %eax,eax_save
+	pushl %ebx
+	call mp1_missile_remove
+	popl %ebx
+	movl %eax,%ebx
+	movl eax_save,%eax
+	jmp explosion_now 
 
 moved_off_screen:
 	cmpl $0,%ebx
