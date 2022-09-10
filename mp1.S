@@ -35,8 +35,8 @@ mp1_score:		.long 0x0	# Player's current score
 
 base_pic:     	    .string "/^^^\\"	# Picture of a live base
 dead_base_pic: 	    .string "xxxxx"	# Picture of a dead base
-crosshairs_x:		.long 0x0	# X-position of the crosshairs
-crosshairs_y:		.long 0x0	# Y-position of the crosshairs
+crosshairs_y:		.long 0x0	# X-position of the crosshairs
+crosshairs_x:		.long 0x0	# Y-position of the crosshairs
 
 .text
 
@@ -87,11 +87,13 @@ redraw_crosshairs:
 	pushl %eax
 	pushl %esi
 	pushl %ecx
-	movl crosshairs_x,%esi 
-	imull $160,%esi,%eax # 80*2*crosshairs_x=eax
-	movl crosshairs_y,%esi # esi=crosshairs_y
+	movl crosshairs_y,%esi 
+	imull $160,%esi,%eax # 80*2*crosshairs_y=eax
+	movl crosshairs_x,%esi # esi=crosshairs_x
+
 	imull $2,%esi 
-	addl %esi,%eax # eax=eax+2*crosshairs_y
+	addl %esi,%eax # eax=eax+2*crosshairs_x
+
 	movb $43,%cl #print hash for crosshairs
 	pushl %edx
 	call mp1_poke
@@ -146,8 +148,9 @@ update_missiles:
 		jmp RETURN_NOW
 
 mp1_ioctl_startgame:
-    movl $12,crosshairs_x
-	movl $40,crosshairs_y
+    movl $12,crosshairs_y
+	movl $40,crosshairs_x
+
 		jmp RETURN_NOW
 
 mp1_ioctl_addmissile:
@@ -158,20 +161,22 @@ mp1_ioctl_movexhairs:
 update_cross_hair:
 	movw 10(%ebp),%bx #lower 16 bits of argument
 	movw 8(%ebp),%si #upper 16 bits of argument
-	movl crosshairs_x,%edi # current crosshairs_x
-	addw %bx,%di #add lower 16 bits to crosshairs_x
+	movl crosshairs_y,%edi # current crosshairs_y
+	addw %bx,%di #add lower 16 bits to crosshairs_y
 	cmpl $25,%edi #compare to 79
 	jb VALID_X #move ahead if valid
 	subw %bx,%di #subtract again if invalid
 VALID_X: 
-	movl %edi,crosshairs_x #update crosshairs_x
-	movl crosshairs_y,%edi 
-	addw %si,%di #update crosshairs_y
+	movl %edi,crosshairs_y #update crosshairs_y
+	movl crosshairs_x,%edi 
+	addw %si,%di #update crosshairs_x
+
 	cmpl $80,%edi
 	jb VALID_Y
 	subw %si,%di #subtract again if invalid
 VALID_Y:
-	movl %edi,crosshairs_y
+	movl %edi,crosshairs_x
+
 	jmp RET_ZERO
 
 mp1_ioctl_getstatus:
@@ -187,9 +192,9 @@ remove_crosshairs:
 	pushl %eax
 	pushl %esi
 	pushl %ecx
-	movl crosshairs_x,%esi
-	imull $160,%esi,%eax
 	movl crosshairs_y,%esi
+	imull $160,%esi,%eax
+	movl crosshairs_x,%esi
 	imull $2,%esi
 	addl %esi,%eax
 	movb $32,%cl
