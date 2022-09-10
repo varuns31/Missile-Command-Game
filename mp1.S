@@ -83,7 +83,7 @@ Back_from_jump:
     jmp explosion_now
 Back_from_explosions:
 	movl $0,%ecx
-	movl $3844,%esi
+	movl $3844,%esi #[24*160+18*2]-32 because 32 is being added to start of loop
 	jmp redraw_bases
 Back_from_redraw_bases:
 	jmp redraw_crosshairs
@@ -94,7 +94,7 @@ redraw_bases:
 	addl $32,%esi #2*16 is the next location for base
 	movl $base_alive,%ebx
 	addl %ecx,%ebx
-	cmpl $0,(%ebx)
+	cmpb $0,1(%ebx)
 	je dead_base
 	movl $base_pic,%edi
 	jmp draw_base
@@ -394,9 +394,9 @@ mp1_ioctl_startgame:
     movl $12,crosshairs_y
 	movl $40,crosshairs_x
 	movl $base_alive,%ebx
-	movl $1,1(%ebx) # first base is alive
-	movl $1,2(%ebx) # second base is alive
-	movl $1,3(%ebx) # third base is alive
+	movb $1,1(%ebx) # first base is alive
+	movb $1,2(%ebx) # second base is alive
+	movb $1,3(%ebx) # third base is alive
 		jmp RETURN_NOW
 
 mp1_ioctl_addmissile:
