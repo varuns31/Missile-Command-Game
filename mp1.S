@@ -84,8 +84,10 @@ DONE:
 Back_from_jump:
 	movl mp1_missile_list,%ebx
 	jmp explosion_now
-	jmp redraw_crosshairs
 Back_from_explosions:
+	jmp redraw_crosshairs
+	
+leave_tasklet:
 		popl %edi
 		popl %esi
 		popl %ebx
@@ -95,21 +97,21 @@ Back_from_explosions:
 explosion_now:
 	cmpl $0,%ebx #head==NULL
 	je Back_from_explosions
-	movl 4(%ebx),%esi
-	movl 20(%ebx),%edi
+	movl X(%ebx),%esi
+	movl DEST_X(%ebx),%edi
 	cmpl %esi,%edi # x==DEST_X
 	je cont_explosion
-	movl 28(%ebx),%esi #exploded is not equal to 0
+	movl EXPLODED(%ebx),%esi #exploded is not equal to 0
 	cmpl $0,%esi
 	ja exploded_missile
 	movl (%ebx),%ebx
 	jmp explosion_now #check next missile
 
 cont_explosion:
-	movl 8(%ebx),%esi
-	movl 24(%ebx),%edi
+	movl Y(%ebx),%esi
+	movl DEST_Y(%ebx),%edi
 	je exploded_missile #y==DEST_Y
-	movl 28(%ebx),%esi #exploded is not equal to 0
+	movl EXPLODED(%ebx),%esi #exploded is not equal to 0
 	cmpl $0,%esi
 	ja exploded_missile
 	movl (%ebx),%ebx	
@@ -243,17 +245,19 @@ redraw_crosshairs:
 	pushl %eax
 	pushl %esi
 	pushl %ecx
-	movl crosshairs_x,%esi
-	imull $160,%esi,%eax
-	movl crosshairs_y,%esi
-	imull $2,%esi
-	addl %esi,%eax
-	movb $35,%cl #print hash for crosshairs
+	movl crosshairs_x,%esi 
+	imull $160,%esi,%eax # 80*2*crosshairs_x=eax
+	movl crosshairs_y,%esi # esi=crosshairs_y
+	imull $2,%esi 
+	addl %esi,%eax # eax=eax+2*crosshairs_y
+	movb $43,%cl #print hash for crosshairs
+	pushl %edx
 	call mp1_poke
+	popl %edx
 	popl %ecx
 	popl %esi
 	popl %eax
-	jmp Back_from_explosions
+	jmp leave_tasklet
 
 # int mp1_ioctl(unsigned long arg, unsigned int cmd)
 # The dispatch function for the MP1 ioctls - should use the cmd argument
@@ -271,9 +275,9 @@ mp1_ioctl:
 	pushl %ebx
 	pushl %esi
 	pushl %edi
-	movl 8(%ebp),%ebx
+	movl 8(%ebp),%ebx #command=ebx
 	cmpl $0,%ebx
-	jl RET_INVALID
+	jl RET_INVALID 
 	cmpl $4,%ebx
 	ja RET_INVALID
 	jmp *jmptable(,%ebx,4)
