@@ -149,6 +149,24 @@ moved_off_screen:
 	ja remove_missile_moved_off_screen
 	cmpl $24,8(%ebx) # head->y > 24
 	ja remove_missile_moved_off_screen
+	jmp redraw_missile
+
+redraw_missile:
+	pushl %eax
+	pushl %esi
+	pushl %ecx
+	movl Y(%ebx),%esi 
+	imull $160,%esi,%eax # 80*2*crosshairs_y=eax
+	movl X(%ebx),%esi # esi=crosshairs_x
+	imul $2,%esi 
+	addl %esi,%eax # eax=eax+2*crosshairs_x
+	movb $43,%cl #print hash for crosshairs
+	pushl %edx
+	call mp1_poke
+	popl %edx
+	popl %ecx
+	popl %esi
+	popl %eax
 	movl (%ebx),%ebx
 	jmp moved_off_screen
 
@@ -217,6 +235,8 @@ del_missile_from_screen:
 	jmp update_position
 
 update_position:
+	jmp remove_missile_from_screen
+cont_update:
 	movl X(%ebx),%esi 
 	movl DEST_X(%ebx),%edi
 	addl %edi,%esi
@@ -225,10 +245,23 @@ update_position:
 	movl DEST_Y(%ebx),%edi
 	addl %edi,%esi
 	movl %esi,Y(%ebx) # y=y+vy
-	jmp redraw_missile
-
-redraw_missile:
 	jmp NEXT_MISSLE
+
+remove_missile_from_screen:
+	pushl %eax
+	pushl %esi
+	pushl %ecx
+	movl Y(%ebx),%esi
+	imull $160,%esi,%eax
+	movl X(%ebx),%esi
+	imull $2,%esi
+	addl %esi,%eax
+	movb $32,%cl
+	call mp1_poke #print " " for original missile
+	popl %ecx
+	popl %esi
+	popl %eax
+	jmp cont_update
 
 leave_tasklet:
 		popl %edi
