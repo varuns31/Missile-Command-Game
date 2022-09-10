@@ -82,8 +82,94 @@ DONE:
 Back_from_jump:
     jmp explosion_now
 Back_from_explosions:
+	movl $0,%esi
+	jmp redraw_bases
+Back_from_redraw_bases:
 	jmp redraw_crosshairs
-	
+
+redraw_bases:
+	jmp draw_base_1
+base_1_drawn:
+	jmp draw_base_2
+base_2_drawn:
+	jmp draw_base_3
+base_3_drawn:
+	jmp Back_from_redraw_bases
+
+draw_base_1:
+	pushl %ecx
+	pushl %eax
+	pushl %edi
+	movl $base_pic,%edi
+	movb (%edi),%cl
+	movl $3876,%eax
+	call mp1_poke
+	movb 1(%edi),%cl
+	movl $3878,%eax
+	call mp1_poke
+	movb  2(%edi),%cl
+	movl $3880,%eax
+	call mp1_poke
+	movb  3(%edi),%cl
+	movl $3882,%eax
+	call mp1_poke
+	movb  4(%edi),%cl
+	movl $3884,%eax
+	call mp1_poke
+	popl %edi
+	popl %eax
+	popl %ecx
+	jmp base_1_drawn
+draw_base_2:
+	pushl %ecx
+	pushl %eax
+	pushl %edi
+	movl $base_pic,%edi
+	movb  (%edi),%cl
+	movl $3912,%eax
+	call mp1_poke
+	movb  1(%edi),%cl
+	movl $3914,%eax
+	call mp1_poke
+	movb  2(%edi),%cl
+	movl $3916,%eax
+	call mp1_poke
+	movb  3(%edi),%cl
+	movl $3918,%eax
+	call mp1_poke
+	movb  4(%edi),%cl
+	movl $3920,%eax
+	call mp1_poke
+	popl %edi
+	popl %eax
+	popl %ecx
+	jmp base_2_drawn
+draw_base_3:
+	pushl %ecx
+	pushl %eax
+	pushl %edi
+	movl $dead_base_pic,%edi
+	movb (%edi),%cl
+	movl $3948,%eax
+	call mp1_poke
+	movb  1(%edi),%cl
+	movl $3950,%eax
+	call mp1_poke
+	movb  2(%edi),%cl
+	movl $3952,%eax
+	call mp1_poke
+	movb  3(%edi),%cl
+	movl $3954,%eax
+	call mp1_poke
+	movb  4(%edi),%cl
+	movl $3956,%eax
+	call mp1_poke
+	popl %edi
+	popl %eax
+	popl %ecx
+	jmp base_3_drawn
+
+
 explosion_now:
 	cmpl $0,%ebx #head==NULL
 	je Back_from_explosions
@@ -336,7 +422,6 @@ update_missiles:
 mp1_ioctl_startgame:
     movl $12,crosshairs_y
 	movl $40,crosshairs_x
-
 		jmp RETURN_NOW
 
 mp1_ioctl_addmissile:
