@@ -382,7 +382,7 @@ RETURN_NOW:
 		ret
 
 RET_ZERO:
-	#movl $0,%eax
+	movl $0,%eax
 	jmp RETURN_NOW
 
 # ----------------- Functions private to this file -------------------
@@ -397,11 +397,34 @@ mp1_ioctl_startgame:
 	movb $1,1(%ebx) # first base is alive
 	movb $1,2(%ebx) # second base is alive
 	movb $1,3(%ebx) # third base is alive
-		jmp RETURN_NOW
+	jmp RETURN_NOW
 
 mp1_ioctl_addmissile:
-		jmp RETURN_NOW
+	movl 8(%ebp),%ebx
+	pushl $36
+	call mp1_malloc
+	popl %edi
+	cmpl $0,%eax
+	je RET_INVALID
+	pushl %edi
+	pushl %ebx
+	pushl %eax
+	call mp1_copy_to_user
+	cmpl $0,%eax
+	popl %eax
+	popl %ebx
+	popl %edi
+	je add_to_linked_list
+	pushl %eax
+	call mp1_free
+	popl %eax
+	jmp RET_INVALID
 
+add_to_linked_list:
+	movl mp1_missile_list,%edi
+	movl %edi,(%eax)
+	movl %eax,mp1_missile_list 
+	jmp RET_ZERO
 mp1_ioctl_movexhairs:
 	jmp remove_crosshairs
 update_cross_hair:
