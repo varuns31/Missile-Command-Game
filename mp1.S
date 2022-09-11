@@ -74,21 +74,40 @@ mp1_rtc_tasklet:
 	movl  %esp,%ebp
 	pushl %ebx
 	pushl %esi
-	pushl %edi
-	movl mp1_missile_list,%ebx
-	jmp check_exploding
-DONE:
-	movl mp1_missile_list,%ebx
-	jmp moved_off_screen
-Back_from_jump:
-	movl mp1_missile_list,%ebx
-	jmp explosion_now
-Back_from_explosions:
+	pushl %edi 
+	pushl mp1_missile_list
+	call update_missiles
+	popl %ebx
 	movl $0,%ecx
 	movl $3844,%esi #[24*160+18*2]-32 because 32 is being added to start of loop
 	jmp redraw_bases
 Back_from_redraw_bases:
 	jmp redraw_crosshairs
+
+redraw_missile:
+	pushl %ebp
+	movl %esp,%ebp
+	pushl %ebx
+	pushl %esi
+	pushl %edi
+	movl 8(%ebp),%ebx
+	cmpl $0,%ebx
+	je RETURN_NOW
+	movl X(%ebx),%esi #esi=X
+	movl Y(%ebx),%edi #edi=Y
+	shrl $16,%esi
+	shrl $16,%edi
+	imull $160,%edi,%eax # 80*2*y=eax
+	imull $2,%esi  #X*2
+	addl %esi,%eax # eax=eax+2*X
+	movb $43,%cl #print " " for missile
+	pushl %edx
+	call mp1_poke
+	popl %edx
+	popl %edi
+	popl %esi
+	leave 
+	ret
 
 redraw_bases:
 	cmpl $3,%ecx
@@ -163,7 +182,7 @@ cont_explosion:
 	movl EXPLODED(%ebx),%esi #exploded is not equal to 0
 	cmpl $0,%esi
 	ja exploded_missile
-	movl (%ebx),%ebx	
+	movl (%ebx),%ebx #not exploded
 	jmp explosion_now #check next missile
 
 exploded_missile:
@@ -181,8 +200,10 @@ draw_exploded_missile:
 	pushl %eax #caller save eax
 	movb EXPLOSION(%ebx),%cl
 	movl X(%ebx),%eax
+	shrl $16,%eax
 	imull $160,%eax,%eax #80 characters per row * 2 bytes per character * x
 	movl Y(%ebx),%esi #esi=y
+	shrl $16,%esi
 	imull $2,%esi,%esi #2 bytes per character * x
 	addl %esi,%eax
 	call mp1_poke #print exploding missile
@@ -204,29 +225,10 @@ exploded_missile_remove:
 moved_off_screen:
 	cmpl $0,%ebx #head=NULL
 	je Back_from_jump
-	cmpl $79,4(%ebx) #head->x > 79
+	cmpw $79,4(%ebx) #head->x > 79
 	ja remove_missile_moved_off_screen
-	cmpl $24,8(%ebx) # head->y > 24
+	cmpw $24,8(%ebx) # head->y > 24
 	ja remove_missile_moved_off_screen
-	jmp redraw_missile
-
-redraw_missile:
-	pushl %eax
-	pushl %esi
-	pushl %ecx
-	movl Y(%ebx),%esi 
-	imull $160,%esi,%eax # 80*2*crosshairs_y=eax
-	movl X(%ebx),%esi # esi=crosshairs_x
-	imul $2,%esi 
-	addl %esi,%eax # eax=eax+2*crosshairs_x
-	movb $43,%cl #print hash for crosshairs
-	pushl %edx
-	call mp1_poke
-	popl %edx
-	popl %ecx
-	popl %esi
-	popl %eax
-	movl (%ebx),%ebx
 	jmp moved_off_screen
 
 remove_missile_moved_off_screen:
@@ -260,61 +262,73 @@ remove_missile:
 	pushl %ebx
 	call mp1_free
 	popl %ebx
-	jmp return_missile_remove
-
-return_missile_remove:
 	movl %edi,%eax #return value is next of deleted pointer
 	popl %edi
 	popl %esi
 	popl %ebx
 	leave 
 	ret
+
 change_head:
 	movl (%esi),%edi #head->next=edi
 	movl %edi,mp1_missile_list #new head of linked list
 	pushl %esi
 	call mp1_free
 	popl %esi
-	jmp return_missile_remove
+	movl %edi,%eax #return value is next of deleted pointer
+	popl %edi
+	popl %esi
+	popl %ebx
+	leave 
+	ret
 
 
 check_exploding:
 	cmpl $0,%ebx #head is 0
 	je DONE
+	pushl %ebx
+	call erase_missile
+	popl %ebx
 	movl EXPLODED(%ebx),%esi
 	cmpl $0,%esi #exploded!=0 means missile is exploding
-	jne NEXT_MISSLE
 	je update_position
-
-NEXT_MISSLE:
 	movl (%ebx),%ebx
 	jmp check_exploding
 
-update_position:
-	pushl %eax
+
+erase_missile:
+	pushl %ebp
+	movl %esp,%ebp
 	pushl %esi
-	pushl %ecx
-	movl Y(%ebx),%esi
-	imull $160,%esi,%eax
-	movl X(%ebx),%esi
-	imull $2,%esi
-	addl %esi,%eax
-	movb $32,%cl
-	cmpl $4160,%eax #TEMPORARY FOR STOPPING SEGFAULT
-	jg NEXT_MISSLE
-	call mp1_poke #print " " for original missile
-	popl %ecx
+	pushl %edi
+	movl 8(%ebp),%ebx #ebx=head of ptr to be erased
+	movl X(%ebx),%esi #esi=X
+	movl Y(%ebx),%edi #edi=Y
+	shrl $16,%esi
+	shrl $16,%edi
+	imull $160,%edi,%eax # 80*2*y=eax
+	imull $2,%esi  #X*2
+	addl %esi,%eax # eax=eax+2*X
+	movb $32,%cl #print " " for missile
+	pushl %edx
+	call mp1_poke
+	popl %edx
+	popl %edi
 	popl %esi
-	popl %eax
-	movl X(%ebx),%esi 
-	movl VX(%ebx),%edi
-	addl %edi,%esi
-	movl %esi,X(%ebx) # x=x+VX
-	movl Y(%ebx),%esi 
-	movl VY(%ebx),%edi
-	addl %edi,%esi
-	movl %esi,Y(%ebx) # y=y+vy
-	jmp NEXT_MISSLE
+	leave 
+	ret
+	
+update_position:
+	movl X(%ebx),%esi #x=esi
+	movl VX(%ebx),%edi #edi=VX
+	addl %edi,%esi #x=x+VX
+	movl %esi,X(%ebx) # x=x+VX in struct
+	movl Y(%ebx),%esi #y=esi
+	movl VY(%ebx),%edi #edi=vy
+	addl %edi,%esi #y=y+vy
+	movl %esi,Y(%ebx) # y=y+vy in struct
+	movl (%ebx),%ebx
+	jmp check_exploding
 
 
 leave_tasklet:
@@ -385,7 +399,25 @@ RET_ZERO:
 # ----------------- Functions private to this file -------------------
 
 update_missiles:
-		jmp RETURN_NOW
+	pushl %ebp
+	movl %esp,%ebp
+	pushl %ebx
+	pushl %esi
+	pushl %edi
+	movl mp1_missile_list,%ebx
+	jmp check_exploding
+DONE:
+	movl 8(%ebp),%ebx
+	jmp moved_off_screen
+Back_from_jump:
+	movl 8(%ebp),%ebx
+	jmp explosion_now
+Back_from_explosions:
+	movl 8(%ebp),%ebx
+	pushl %ebx
+	call redraw_missile
+	popl %ebx
+	jmp RETURN_NOW
 
 mp1_ioctl_startgame:
     movl $12,crosshairs_y
@@ -403,8 +435,8 @@ mp1_ioctl_addmissile:
 	popl %edi #edi=36
 	cmpl $0,%eax #returnptr is 0
 	je RET_INVALID
-	shrl $16,X(%ebx)
-	shrl $16,Y(%ebx)
+	#shrl $16,X(%ebx)
+	#shrl $16,Y(%ebx)
 	#shrl $16,VX(%ebx)
 	#shrl $16,VY(%ebx)
 	pushl %edi #push36
