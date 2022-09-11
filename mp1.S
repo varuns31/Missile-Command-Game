@@ -30,7 +30,7 @@ mp1_missile_list:	.long 0x0	# Head of list pointer
 base_alive:		.long 0x0	# Array of 3 bytes, plus a padding byte
 mp1_score:		.long 0x0	# Player's current score
 
-
+copy_to_user: .long 0x0
 # Data private to this  file
 
 base_pic:     	    .string "/^^^\\"	# Picture of a live base
@@ -286,9 +286,6 @@ change_head:
 check_exploding:
 	cmpl $0,%ebx #head is 0
 	je DONE
-	pushl %ebx
-	call erase_missile
-	popl %ebx
 	movl EXPLODED(%ebx),%esi
 	cmpl $0,%esi #exploded!=0 means missile is exploding
 	je update_position
@@ -405,7 +402,15 @@ update_missiles:
 	pushl %esi
 	pushl %edi
 	movl mp1_missile_list,%ebx
-	jmp check_exploding
+	movl %ebx,%esi
+erase_loop:
+	cmpl $0,%esi
+	je check_exploding
+	pushl %esi
+	call erase_missile
+	popl %esi
+	movl (%esi),%esi
+	jmp erase_loop
 DONE:
 	movl 8(%ebp),%ebx
 	jmp moved_off_screen
@@ -414,10 +419,18 @@ Back_from_jump:
 	jmp explosion_now
 Back_from_explosions:
 	movl 8(%ebp),%ebx
+	movl %ebx,%esi
+draw_loop:
+	cmpl $0,%esi
+	je RETURN_NOW
+	cmpl $0,EXPLODED(%ebx)
+	jne already_drawn
 	pushl %ebx
 	call redraw_missile
 	popl %ebx
-	jmp RETURN_NOW
+already_drawn:
+	movl (%esi),%esi
+	jmp draw_loop
 
 mp1_ioctl_startgame:
     movl $12,crosshairs_y
@@ -442,7 +455,7 @@ mp1_ioctl_addmissile:
 	pushl %edi #push36
 	pushl %ebx #pushptr with argument to be copied
 	pushl %eax # pushptr to kernel space created
-	call mp1_copy_to_user
+	call mp1_copy_from_user
 	cmpl $0,%eax #all memory allocated
 	popl %eax
 	popl %ebx
@@ -482,8 +495,37 @@ VALID_Y:
 	jmp RET_ZERO
 
 mp1_ioctl_getstatus:
-		jmp RETURN_NOW
+		movl $base_alive,%esi
+		andl $0,%edi
+		movw mp1_score,%di
+		cmpl $0,1(%esi)
+		jne base_1_alive
+	base_2_check:
+		cmpl $0,2(%esi)
+		jne base_1_alive
+	base_3_check:
+	    cmpl $0,3(%esi)
+		jne base_1_alive
+	base_check_done:
+		movl %edi,copy_to_user
+		pushl $36
+		pushl $copy_to_user
+		pushl 8(%ebp)
+		call mp1_copy_to_user
+		addl $12,%esp
+		cmpl $0,%eax
+		jne RET_INVALID
+		jmp RET_ZERO
 
+base_1_alive:
+		orl $0x10000,%edi
+		jmp base_2_check
+base_2_alive:
+		orl $0x100000,%edi
+		jmp base_3_check
+base_3_alive:
+		orl $0x1000000,%edi
+		jmp base_check_done
 mp1_ioctl_endgame:
 		movl mp1_missile_list,%ebx #head=ebx
 		cmpl %ebx,0 # head=null then return
