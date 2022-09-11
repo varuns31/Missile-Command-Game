@@ -80,7 +80,7 @@ mp1_rtc_tasklet:
 DONE:
 	jmp moved_off_screen
 Back_from_jump:
-    jmp explosion_now
+	jmp explosion_now
 Back_from_explosions:
 	movl $0,%ecx
 	movl $3844,%esi #[24*160+18*2]-32 because 32 is being added to start of loop
@@ -282,18 +282,28 @@ check_exploding:
 	movl EXPLODED(%ebx),%esi
 	cmpl $0,%esi #exploded!=0 means missile is exploding
 	jne NEXT_MISSLE
-	je del_missile_from_screen
+	je update_position
 
 NEXT_MISSLE:
-	movl (%esi),%esi
+	movl (%ebx),%ebx
 	jmp check_exploding
 
-del_missile_from_screen:
-	jmp update_position
-
 update_position:
-	jmp remove_missile_from_screen
-cont_update:
+	#pushl %eax
+	#pushl %esi
+	#pushl %ecx
+	#movl Y(%ebx),%esi
+	#imull $160,%esi,%eax
+	#movl X(%ebx),%esi
+	#imull $2,%esi
+	#addl %esi,%eax
+	#movb $32,%cl
+	#cmpl $4160,%eax #TEMPORARY FOR STOPPING SEGFAULT
+	#jg NEXT_MISSLE
+	#call mp1_poke #print " " for original missile
+	#popl %ecx
+	#popl %esi
+	#popl %eax
 	movl X(%ebx),%esi 
 	movl DEST_X(%ebx),%edi
 	addl %edi,%esi
@@ -304,21 +314,6 @@ cont_update:
 	movl %esi,Y(%ebx) # y=y+vy
 	jmp NEXT_MISSLE
 
-remove_missile_from_screen:
-	pushl %eax
-	pushl %esi
-	pushl %ecx
-	movl Y(%ebx),%esi
-	imull $160,%esi,%eax
-	movl X(%ebx),%esi
-	imull $2,%esi
-	addl %esi,%eax
-	movb $32,%cl
-	call mp1_poke #print " " for original missile
-	popl %ecx
-	popl %esi
-	popl %eax
-	jmp cont_update
 
 leave_tasklet:
 		popl %edi
@@ -400,31 +395,34 @@ mp1_ioctl_startgame:
 	jmp RETURN_NOW
 
 mp1_ioctl_addmissile:
-	movl 8(%ebp),%ebx
-	pushl $36
-	call mp1_malloc
-	popl %edi
-	cmpl $0,%eax
+	movl 8(%ebp),%ebx #ebx=argument
+	pushl $36 #36 bit memory needs to be freed
+	call mp1_malloc 
+	popl %edi #edi=36
+	cmpl $0,%eax #returnptr is 0
 	je RET_INVALID
-	pushl %edi
-	pushl %ebx
-	pushl %eax
+	shrl $16,X(%ebx)
+	shrl $16,Y(%ebx)
+	pushl %edi #push36
+	pushl %ebx #pushptr with argument to be copied
+	pushl %eax # pushptr to kernel space created
 	call mp1_copy_to_user
-	cmpl $0,%eax
+	cmpl $0,%eax #all memory allocated
 	popl %eax
 	popl %ebx
 	popl %edi
 	je add_to_linked_list
-	pushl %eax
+	pushl %eax #free from memory when space not found
 	call mp1_free
 	popl %eax
 	jmp RET_INVALID
 
 add_to_linked_list:
-	movl mp1_missile_list,%edi
-	movl %edi,(%eax)
-	movl %eax,mp1_missile_list 
-	jmp RET_ZERO
+	movl mp1_missile_list,%edi #head=edi
+	movl %edi,(%eax) # eax->next=head
+	movl %eax,mp1_missile_list #eax becomes new head
+	jmp RET_ZERO #return 0 
+
 mp1_ioctl_movexhairs:
 	jmp remove_crosshairs
 update_cross_hair:
