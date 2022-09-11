@@ -78,10 +78,8 @@ mp1_rtc_tasklet:
 	movl mp1_missile_list,%ebx
 	jmp check_exploding
 DONE:
-	movl mp1_missile_list,%ebx
 	jmp moved_off_screen
 Back_from_jump:
-	movl mp1_missile_list,%ebx
 	jmp explosion_now
 Back_from_explosions:
 	movl $0,%ecx
@@ -291,21 +289,21 @@ NEXT_MISSLE:
 	jmp check_exploding
 
 update_position:
-	pushl %eax
-	pushl %esi
-	pushl %ecx
-	movl Y(%ebx),%esi
-	imull $160,%esi,%eax
-	movl X(%ebx),%esi
-	imull $2,%esi
-	addl %esi,%eax
-	movb $32,%cl
-	cmpl $4160,%eax #TEMPORARY FOR STOPPING SEGFAULT
-	jg NEXT_MISSLE
-	call mp1_poke #print " " for original missile
-	popl %ecx
-	popl %esi
-	popl %eax
+	#pushl %eax
+	#pushl %esi
+	#pushl %ecx
+	#movl Y(%ebx),%esi
+	#imull $160,%esi,%eax
+	#movl X(%ebx),%esi
+	#imull $2,%esi
+	#addl %esi,%eax
+	#movb $32,%cl
+	#cmpl $4160,%eax #TEMPORARY FOR STOPPING SEGFAULT
+	#jg NEXT_MISSLE
+	#call mp1_poke #print " " for original missile
+	#popl %ecx
+	#popl %esi
+	#popl %eax
 	movl X(%ebx),%esi 
 	movl VX(%ebx),%edi
 	addl %edi,%esi
@@ -405,8 +403,6 @@ mp1_ioctl_addmissile:
 	je RET_INVALID
 	shrl $16,X(%ebx)
 	shrl $16,Y(%ebx)
-	#shrl $16,VX(%ebx)
-	#shrl $16,VY(%ebx)
 	pushl %edi #push36
 	pushl %ebx #pushptr with argument to be copied
 	pushl %eax # pushptr to kernel space created
@@ -454,7 +450,7 @@ mp1_ioctl_getstatus:
 
 mp1_ioctl_endgame:
 		movl mp1_missile_list,%ebx #head=ebx
-		cmpl %ebx,0 # head=null then return
+		cmpl $0,%ebx # head==0 return
 		je RETURN_NOW
 		movl (%ebx),%esi #esi=head->next
 		pushl %ebx #free head
@@ -462,6 +458,7 @@ mp1_ioctl_endgame:
 		popl %ebx
 		movl %esi,mp1_missile_list #head=head->next
 		jmp mp1_ioctl_endgame
+
 
 jmptable:
 	.long mp1_ioctl_startgame,mp1_ioctl_addmissile,mp1_ioctl_movexhairs,mp1_ioctl_getstatus,mp1_ioctl_endgame
