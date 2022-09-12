@@ -310,9 +310,7 @@ back_from_notification:
 
 notify_user:
 
-	#pushl %esi
 	call mp1_notify_user
-	#popl %esi
 
 	jmp back_from_notification
 
@@ -323,29 +321,6 @@ draw_exploded_missile:
 	popl %esi
 	popl %edi
 	jmp RETURN_NOW
-	# pushl %ecx #caller save ecx
-	# pushl %esi #caller save esi
-	# pushl %eax #caller save eax
-
-	# movb $64,%cl
-	# #movl $0,%eax
-	# movl X(%esi),%eax
-	# shrl $16,%eax
-	# imull $160,%eax #80 characters per row * 2 bytes per character * x
-	# movl Y(%esi),%ebx #esi=y
-	# shrl $16,%ebx
-	# imull $2,%ebx #2 bytes per character * x
-	# addl %ebx,%eax
-
-	# pushl %edx
-	# call mp1_poke #print exploding missile
-	# popl %edx
-
-	# popl %eax
-	# popl %esi
-	# popl %ecx
-	# #movl (%esi),%esi
-	# jmp RETURN_NOW
 
 erase_missile: #void erase(void* ptr)
 	pushl %ebp
@@ -497,10 +472,6 @@ mp1_ioctl_addmissile:
 
 	cmpl $0,%eax #returnptr is 0
 	je RET_INVALID
-	#shrl $16,X(%ebx)
-	#shrl $16,Y(%ebx)
-	#shrl $16,VX(%ebx)
-	#shrl $16,VY(%ebx)
 	pushl %edi #push36
 	pushl %ebx #pushptr with argument to be copied
 	pushl %eax # pushptr to kernel space created
