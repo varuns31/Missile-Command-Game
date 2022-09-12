@@ -550,13 +550,16 @@ mp1_ioctl_getstatus:
 		movl $base_alive,%esi
 		andl $0,%edi
 		movw mp1_score,%di
-		cmpl $0,(%esi)
+		cmpb $0,(%esi)
 		jne base_1_alive
+
+
+
 	base_2_check:
-		cmpl $0,1(%esi)
+		cmpb $0,1(%esi)
 		jne base_2_alive
 	base_3_check:
-	    cmpl $0,2(%esi)
+	    cmpb $0,2(%esi)
 		jne base_3_alive
 	base_check_done:
 		pushl %edi
