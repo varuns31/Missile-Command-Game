@@ -31,6 +31,7 @@ base_alive:		.long 0x0	# Array of 3 bytes, plus a padding byte
 mp1_score:		.long 0x0	# Player's current score
 
 copy_to_user: .long 0x0
+debug_value: .long 0x0
 # Data private to this  file
 
 base_pic:     	    .string "/^^^\\"	# Picture of a live base
@@ -261,8 +262,12 @@ update_missile_loop:
 	cmpl $0,%esi #head is null
 	je RETURN_NOW #end of linked list reached
 	cmpl $0,EXPLODED(%esi) #exploded is 0 means not exploding
+	movl %esi,debug_value
 	je not_exploding
-	call missile_is_exploding # comes back with updated esi value
+	pushl %esi
+	call missile_is_exploding # returns updated esi value
+	popl %esi
+	movl %eax,%esi
 	jmp update_missile_loop
 
 missile_is_exploding:
@@ -286,29 +291,30 @@ back_from_notification:
 	pushl %esi
 	call mp1_missile_remove
 	popl %esi
-	movl %eax,%esi
 	popl %edi
 	popl %edi
-	popl %ebx
 	leave 
 	ret
 
 notify_user:
+	pushl %esi
 	call mp1_notify_user
+	popl %esi
 	jmp back_from_notification
 
 draw_exploded_missile:
 	pushl %ecx #caller save ecx
 	pushl %esi #caller save esi
 	pushl %eax #caller save eax
-	movb EXPLOSION,%cl
-	movl X(%ebx),%eax
+	movb $64,%cl
+	movl $0,%eax
+	movl X(%esi),%eax
 	shrl $16,%eax
 	imull $160,%eax,%eax #80 characters per row * 2 bytes per character * x
-	movl Y(%ebx),%esi #esi=y
-	shrl $16,%esi
-	imull $2,%esi,%esi #2 bytes per character * x
-	addl %esi,%eax
+	movl Y(%esi),%ebx #esi=y
+	shrl $16,%ebx
+	imull $2,%ebx,%ebx #2 bytes per character * x
+	addl %ebx,%eax
 	call mp1_poke #print exploding missile
 	popl %eax
 	popl %esi
@@ -357,8 +363,9 @@ not_exploding:
 	jmp check_dest_reached
 
 check_dest_reached:
-	movl X(%esi),%edi # edi=X
-	cmpl DEST_X(%esi),%edi #when x is same as dest x check y value
+	movl $0,%edi
+	movw X+2(%esi),%di # edi=X
+	cmpw DEST_X(%esi),%di #when x is same as dest x check y value
 	je check_y
 	pushl %esi
 	call redraw_missile #redraw missile if dest not reached
@@ -367,8 +374,8 @@ check_dest_reached:
 	jmp update_missile_loop
 
 check_y:
-    movl Y(%esi),%edi #edi=Y
-	cmpl DEST_Y(%esi),%edi #when y=DEST_Y start exploding
+    movw Y+2(%esi),%di #edi=Y
+	cmpw DEST_Y(%esi),%di #when y=DEST_Y start exploding
 	je at_dest 
 	pushl %esi
 	call redraw_missile
@@ -406,12 +413,13 @@ redraw_missile:
 	imull $160,%edi,%eax # 80*2*y=eax
 	imull $2,%esi  #X*2
 	addl %esi,%eax # eax=eax+2*X
-	movb $43,%cl #print " " for missile
+	movb $103,%cl #print g for missile
 	pushl %edx
 	call mp1_poke
 	popl %edx
 	popl %edi
 	popl %esi
+	popl %ebx
 	leave 
 	ret
 mp1_ioctl_startgame:
