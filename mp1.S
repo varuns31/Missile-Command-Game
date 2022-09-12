@@ -79,7 +79,7 @@ mp1_rtc_tasklet:
 	call update_missiles
 	popl %ebx
 
-	movl $0,%ecx
+	movl $0,%ecx #initialise ecx register
 	movl $3844,%esi #[24*160+18*2]-32 because 32 is being added to start of loop
 	jmp redraw_bases
 Back_from_redraw_bases:
@@ -87,12 +87,12 @@ Back_from_redraw_bases:
 	jmp redraw_crosshairs
 
 redraw_bases:
-	cmpl $3,%ecx
+	cmpl $3,%ecx #loop goes on for 3 iterations for 3 bases
 	je Back_from_redraw_bases
 	addl $32,%esi #2*16 is the next location for base
 	movl $base_alive,%ebx
 	addl %ecx,%ebx
-	cmpb $0,(%ebx)
+	cmpb $0,(%ebx) # check if basealive[0]=0
 	je dead_base
 	movl $base_pic,%edi
 	jmp draw_base
@@ -109,27 +109,27 @@ draw_base:
 	pushl %eax
 	call mp1_poke
 	popl %eax
-	addl $2,%esi
+	addl $2,%esi #every block is two bytes
 	movl %esi,%eax
-	movb  1(%edi),%cl
+	movb  1(%edi),%cl #every character is a byte
     pushl %eax
 	call mp1_poke
 	popl %eax
-	addl $2,%esi
+	addl $2,%esi #every block is two bytes
 	movl %esi,%eax
-	movb  2(%edi),%cl
+	movb  2(%edi),%cl #every character is a byte
 	pushl %eax
 	call mp1_poke
 	popl %eax
-	addl $2,%esi
+	addl $2,%esi #every block is two bytes
 	movl %esi,%eax
-	movb  3(%edi),%cl
+	movb  3(%edi),%cl #every character is a byte
 	pushl %eax
 	call mp1_poke
 	popl %eax
-	addl $2,%esi
+	addl $2,%esi #every block is two bytes
 	movl %esi,%eax
-	movb  4(%edi),%cl
+	movb  4(%edi),%cl #every character is a byte
 	pushl %eax
 	call mp1_poke
 	popl %eax
@@ -146,7 +146,7 @@ mp1_missile_remove: # void* remove(void* ptr) returns pointer to next of deleted
 	pushl %ebx
 	pushl %esi
 	pushl %edi
-	movl 8(%ebp),%ebx # ebx= pointer of missile to remove
+	movl 8(%ebp),%ebx # ebx= pointer of missile to remove (argument of function)
 	cmpl $0,%ebx
 	je RETURN_NOW
 	movl mp1_missile_list,%esi # esi=head of linked list
@@ -229,25 +229,25 @@ mp1_ioctl:
 	pushl %esi
 	pushl %edi
 	movl 12(%ebp),%ebx #command=ebx
-	cmpl $0,%ebx
+	cmpl $0,%ebx #command<0 or command>4
 	jl RET_INVALID 
 	cmpl $4,%ebx
 	ja RET_INVALID
 	jmp *jmptable(,%ebx,4)
 
 RET_INVALID:
-	movl $-1,%eax
+	movl $-1,%eax #return value is -1
 	jmp RETURN_NOW
 
 RETURN_NOW:
-		popl %edi
+		popl %edi #common callee teardown
 		popl %esi
 		popl %ebx
 		leave 	
 		ret
 
 RET_ZERO:
-	movl $0,%eax
+	movl $0,%eax #return value is 0
 	jmp RETURN_NOW
 
 # ----------------- Functions private to this file -------------------
@@ -284,18 +284,18 @@ missile_is_exploding:
 	pushl %edi
 	pushl %esi
 
-	movl 8(%ebp),%esi
+	movl 8(%ebp),%esi #esi gets argument passed to function
 
 	pushl %esi
 	call missile_explode
 	popl %esi
 
-	cmpl $0,%eax
+	cmpl $0,%eax #when missile explode returns not 0 notify user
 	jne notify_user
 back_from_notification:
 
-	decl EXPLODED(%esi)
-	cmpl $0,EXPLODED(%esi)
+	decl EXPLODED(%esi) #decrement exploded
+	cmpl $0,EXPLODED(%esi) #check if becomes 0 meaning done exploding
 	jne draw_exploded_missile
 
 	pushl %esi
@@ -319,7 +319,7 @@ notify_user:
 draw_exploded_missile:
 	pushl $64
 	pushl %esi
-	call redraw_missile
+	call redraw_missile #takes in two parameters
 	popl %esi
 	popl %edi
 	jmp RETURN_NOW
@@ -399,7 +399,7 @@ not_exploding:
 
 check_dest_reached:
 	movl X(%esi),%edi
-	shrl $16,%edi
+	shrl $16,%edi #shift right for top 16 bits
 	#movw X+2(%esi),%di # edi=X
 	cmpl DEST_X(%esi),%edi #when x is same as dest x check y value
 	je check_y
@@ -417,11 +417,11 @@ check_dest_reached:
 
 check_y:
     movl Y(%esi),%edi #edi=Y
-	shrl $16,%edi
+	shrl $16,%edi #shift right for top 16 bits
 	cmpl DEST_Y(%esi),%edi #when y=DEST_Y start exploding
 	je at_dest 
 
-	pushl $103
+	pushl $103 #ascii value for g
 	pushl %esi
 	call redraw_missile
 	popl %esi
@@ -458,13 +458,13 @@ redraw_missile:
 	pushl %esi
 	pushl %edi
 
-	movl 8(%ebp),%ebx
+	movl 8(%ebp),%ebx #argument of redraw missile which is ptr to struct
 	cmpl $0,%ebx
 	je RETURN_NOW
 	movl X(%ebx),%esi #esi=X
 	movl Y(%ebx),%edi #edi=Y
-	shrl $16,%esi
-	shrl $16,%edi
+	shrl $16,%esi #shift right for top 16 bits
+	shrl $16,%edi  #shift right for top 16 bits
 	imull $160,%edi,%eax # 80*2*y=eax
 	imull $2,%esi  #X*2
 	addl %esi,%eax # eax=eax+2*X
@@ -480,8 +480,8 @@ redraw_missile:
 	leave 
 	ret
 mp1_ioctl_startgame:
-    movl $12,crosshairs_y
-	movl $40,crosshairs_x
+    movl $12,crosshairs_y #centre of screen
+	movl $40,crosshairs_x #centre of screen
 	movl $base_alive,%ebx
 	movb $1,(%ebx) # first base is alive
 	movb $1,1(%ebx) # second base is alive
@@ -548,40 +548,40 @@ VALID_Y:
 
 mp1_ioctl_getstatus:
 		movl $base_alive,%esi
-		andl $0,%edi
+		andl $0,%edi #initialize edi with 0
 		movw mp1_score,%di
-		cmpb $0,(%esi)
+		cmpb $0,(%esi) #compare 0 with base alive[0]
 		jne base_1_alive
 
 
 
 	base_2_check:
-		cmpb $0,1(%esi)
+		cmpb $0,1(%esi) #compare 0 with base alive[1]
 		jne base_2_alive
 	base_3_check:
-	    cmpb $0,2(%esi)
+	    cmpb $0,2(%esi) #compare 0 with base alive[2]
 		jne base_3_alive
 	base_check_done:
 		pushl %edi
 		movl %esp,%ecx
-		pushl $4
+		pushl $4 #4 bytes to be copied 
 		pushl %ecx
-		pushl 8(%ebp)
+		pushl 8(%ebp) #argument
 		call mp1_copy_to_user
-		addl $12,%esp
+		addl $12,%esp #pop from stack
 		cmpl $0,%eax
 		popl %edi
 		jne RET_INVALID
 		jmp RET_ZERO
 
 base_1_alive:
-		orl $0x10000,%edi
+		orl $0x10000,%edi #hex value for 2^16 for 16th bit
 		jmp base_2_check
 base_2_alive:
-		orl $0x20000,%edi
+		orl $0x20000,%edi #hex value for 2^17 for 17th bit
 		jmp base_3_check
 base_3_alive:
-		orl $0x40000,%edi
+		orl $0x40000,%edi #hex value for 2^18 for 18th bit
 		jmp base_check_done
 
 
@@ -607,7 +607,7 @@ remove_crosshairs:
 	pushl %ecx
 
 	movl crosshairs_y,%esi
-	imull $160,%esi,%eax
+	imull $160,%esi,%eax #160*y+2*x=offset for screen printing
 	movl crosshairs_x,%esi
 	imull $2,%esi
 	addl %esi,%eax
