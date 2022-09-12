@@ -311,7 +311,7 @@ back_from_notification:
 notify_user:
 
 	#pushl %esi
-	#call mp1_notify_user
+	call mp1_notify_user
 	#popl %esi
 
 	jmp back_from_notification
@@ -554,18 +554,20 @@ mp1_ioctl_getstatus:
 		jne base_1_alive
 	base_2_check:
 		cmpl $0,1(%esi)
-		jne base_1_alive
+		jne base_2_alive
 	base_3_check:
 	    cmpl $0,2(%esi)
-		jne base_1_alive
+		jne base_3_alive
 	base_check_done:
-		movl %edi,mp1_missile_list
-		pushl $36
-		pushl mp1_missile_list
+		pushl %edi
+		movl %esp,%ecx
+		pushl $4
+		pushl %ecx
 		pushl 8(%ebp)
 		call mp1_copy_to_user
 		addl $12,%esp
 		cmpl $0,%eax
+		popl %edi
 		jne RET_INVALID
 		jmp RET_ZERO
 
@@ -573,10 +575,10 @@ base_1_alive:
 		orl $0x10000,%edi
 		jmp base_2_check
 base_2_alive:
-		orl $0x100000,%edi
+		orl $0x20000,%edi
 		jmp base_3_check
 base_3_alive:
-		orl $0x1000000,%edi
+		orl $0x40000,%edi
 		jmp base_check_done
 
 
@@ -614,4 +616,7 @@ remove_crosshairs:
 	popl %eax
 	jmp update_cross_hair
 
+
+mp1_ptr_to_user:
+	.long 0x0
 
