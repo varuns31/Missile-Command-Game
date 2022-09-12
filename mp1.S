@@ -298,9 +298,11 @@ back_from_notification:
 	cmpl $0,EXPLODED(%esi) #check if becomes 0 meaning done exploding
 	jne draw_exploded_missile
 
+	pushl $32
 	pushl %esi
-	call erase_missile
+	call redraw_missile #erased missile at esi by drawing " "
 	popl %esi
+	popl %ebx
 
 	pushl %esi
 	call mp1_missile_remove
@@ -317,42 +319,21 @@ notify_user:
 draw_exploded_missile:
 	pushl $64
 	pushl %esi
-	call redraw_missile #takes in two parameters
+	call redraw_missile #draw exploded missile at esi by drawing "@"
 	popl %esi
 	popl %edi
 	jmp RETURN_NOW
 
-erase_missile: #void erase(void* ptr)
-	pushl %ebp
-	movl %esp,%ebp
-	pushl %ebx
-	pushl %esi
-	pushl %edi
-
-	movl 8(%ebp),%ebx #ebx=head of ptr to be erased
-	movl X(%ebx),%esi #esi=X
-	movl Y(%ebx),%edi #edi=Y
-	shrl $16,%esi
-	shrl $16,%edi
-	imull $160,%edi,%eax # 80*2*y=eax
-	imull $2,%esi  #X*2
-	addl %esi,%eax # eax=eax+2*X
-	movb $32,%cl #print " " for missile
-
-	pushl %edx
-	call mp1_poke
-	popl %edx
-
-	jmp RETURN_NOW
- 
 not_exploding:
 	pushl %edi
 
     pushl %esi
 
+	pushl $32
 	pushl %esi
-	call erase_missile #erased missile at esi
+	call redraw_missile #erased missile at esi by drawing " "
 	popl %esi
+	popl %ebx
 
 	movl X(%esi),%ebx #x=ebx
 	movl VX(%esi),%edi #edi=VX
@@ -396,9 +377,9 @@ check_y:
 	cmpl DEST_Y(%esi),%edi #when y=DEST_Y start exploding
 	je at_dest 
 
-	pushl $103 #ascii value for g
+	pushl C(%esi) #value to be printed for missile
 	pushl %esi
-	call redraw_missile
+	call redraw_missile #erased missile at esi by drawing " "
 	popl %esi
 	popl %edi
 
