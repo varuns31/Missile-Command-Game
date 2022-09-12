@@ -274,6 +274,9 @@ missile_is_exploding:
 	pushl %esi
 	call missile_explode
 	popl %esi
+	cmpl $0,%eax
+	jne notify_user
+back_from_notification:
 	decl EXPLODED(%esi)
 	cmpl $0,EXPLODED(%esi)
 	jne draw_exploded_missile
@@ -289,7 +292,11 @@ missile_is_exploding:
 	popl %ebx
 	leave 
 	ret
-	
+
+notify_user:
+	call mp1_notify_user
+	jmp back_from_notification
+
 draw_exploded_missile:
 	pushl %ecx #caller save ecx
 	pushl %esi #caller save esi
@@ -343,9 +350,9 @@ not_exploding:
 	addl %edi,%ebx #y=y+vy
 	movl %ebx,Y(%esi) # y=y+vy in struct
 	popl %esi
-	cmpw $79,4(%esi) #head->x > 79 || x<0
+	cmpw $79,6(%esi) #head->x > 79 || x<0
 	ja remove_missile_moved_off_screen
-	cmpw $24,8(%esi) # head->y > 24
+	cmpw $24,10(%esi) # head->y > 24
 	ja remove_missile_moved_off_screen
 	jmp check_dest_reached
 
